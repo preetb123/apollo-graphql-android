@@ -1,0 +1,7 @@
+mutation addVideo($video: VideoInput!) {
+  createVideo(video: $video) {
+    id
+    title
+    duration
+  }
+}

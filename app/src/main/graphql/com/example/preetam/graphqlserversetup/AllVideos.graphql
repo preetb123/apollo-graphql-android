@@ -1,0 +1,8 @@
+query allVideos {
+  videos {
+    id
+    title
+    duration
+    released
+  }
+}
