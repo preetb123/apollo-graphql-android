@@ -1,6 +1,9 @@
 package com.example.preetam.graphqlserversetup;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -14,6 +17,7 @@ import com.apollographql.apollo.ApolloMutationCall;
 import com.apollographql.apollo.rx2.Rx2Apollo;
 import com.example.preetam.graphqlserversetup.type.VideoInput;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,13 +28,14 @@ public class MainActivity extends AppCompatActivity {
   private static final String TAG = "MainActivity";
   private MainApplication application;
   private ListView listView;
+  private VideoAdapter adapter;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
 
-    application = (MainApplication)getApplication();
+    application = (MainApplication) getApplication();
 
     Button createVideo = findViewById(R.id.add_button);
     final EditText input = findViewById(R.id.input);
@@ -38,13 +43,20 @@ public class MainActivity extends AppCompatActivity {
     createVideo.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        input.setText("");
         addVideo(input.getText().toString());
       }
     });
-
+    adapter = new VideoAdapter(this, android.R.layout.simple_list_item_1,
+        android.R.id.text1, new ArrayList<String>());
+    listView.setAdapter(adapter);
     loadVideosList();
     subscribeToNewVideos();
+  }
+
+  public class VideoAdapter extends ArrayAdapter<String> {
+    public VideoAdapter(Context context, int resource, int text1, ArrayList<String> strings) {
+      super(context, resource, text1, strings);
+    }
   }
 
   private void subscribeToNewVideos() {
@@ -53,8 +65,8 @@ public class MainActivity extends AppCompatActivity {
         .observeOn(AndroidSchedulers.mainThread())
         .subscribe(response -> {
           final String title = response.data().videoAdded.title;
-          ((ArrayAdapter<String>)listView.getAdapter()).add(title);
           Toast.makeText(application, "New video received", Toast.LENGTH_SHORT).show();
+          adapter.add(title);
         }, throwable -> {
           Toast.makeText(application, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
         });
@@ -74,10 +86,7 @@ public class MainActivity extends AppCompatActivity {
 
   private void loadData(List<AllVideosQuery.Video> videos) {
     List<String> videoTitles = videos.stream().map(video -> video.title).collect(Collectors.toList());
-    listView.setAdapter(new ArrayAdapter<String>(getApplicationContext(),
-        android.R.layout.simple_list_item_1,
-        android.R.id.text1,
-        videoTitles));
+    adapter.addAll(videoTitles);
   }
 
   public void addVideo(String input) {
@@ -87,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
         .released(true)
         .build();
     ApolloMutationCall<AddVideoMutation.Data> addVideoMutation = application.apolloClient().mutate(AddVideoMutation.builder().video(videoInput).build());
+
     Rx2Apollo.from(addVideoMutation)
         .subscribeOn(Schedulers.io())
         .observeOn(AndroidSchedulers.mainThread())
